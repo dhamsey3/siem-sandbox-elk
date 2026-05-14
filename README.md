@@ -17,9 +17,9 @@ The stack runs Elasticsearch, Kibana, Filebeat, Auditbeat, and a small synthetic
 
 ## Architecture
 
-![SIEM Sandbox architecture](docs/architecture.svg)
+![SIEM Sandbox architecture](docs/siem-architecture.svg)
 
-The architecture view is available as a rendered [SVG](docs/architecture.svg). The repository also includes the editable diagrams.net source at [docs/architecture.drawio](docs/architecture.drawio). The diagram covers the repository inputs, local telemetry generation, Docker Compose services, authenticated Elastic ingestion paths, Kibana access, and persistent storage.
+The architecture view is available as a rendered [SVG](docs/siem-architecture.svg). It covers the project control plane, local telemetry generation, Docker Compose services, authenticated Elastic ingestion paths, Kibana access, and persistent storage.
 
 ## Requirements
 
