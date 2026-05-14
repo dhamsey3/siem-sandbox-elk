@@ -19,7 +19,7 @@ The stack runs Elasticsearch, Kibana, Filebeat, Auditbeat, and a small synthetic
 
 ![SIEM Sandbox architecture](docs/architecture.svg)
 
-The rendered diagram above is available as [SVG](docs/architecture.svg), with an editable diagrams.net version in [docs/architecture.drawio](docs/architecture.drawio). It maps the local workstation boundary, Docker Compose network, authentication setup, Beats ingestion paths, synthetic event generation, and storage layer.
+The architecture view is available as a rendered [SVG](docs/architecture.svg). The repository also includes the editable diagrams.net source at [docs/architecture.drawio](docs/architecture.drawio). The diagram covers the repository inputs, local telemetry generation, Docker Compose services, authenticated Elastic ingestion paths, Kibana access, and persistent storage.
 
 ## Requirements
 
