@@ -16,12 +16,18 @@ auditbeat.modules:
 
 output.elasticsearch:
   hosts: ["http://elasticsearch:9200"]
+  username: "${ELASTIC_USERNAME}"
+  password: "${ELASTIC_PASSWORD}"
 
 setup.kibana:
   host: "http://kibana:5601"
+  username: "${ELASTIC_USERNAME}"
+  password: "${ELASTIC_PASSWORD}"
 
 setup.template.enabled: true
 setup.template.name: "auditbeat"
 setup.template.pattern: "auditbeat-*"
 
 logging.level: info
+logging.to_files: false
+logging.to_stderr: true

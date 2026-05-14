@@ -1,7 +1,0 @@
-<group name="local,">
-  <rule id="100001" level="10">
-    <decoded_as>json</decoded_as>
-    <description>Custom SSH brute force rule</description>
-    <match>sshd.*Failed password</match>
-  </rule>
-</group>

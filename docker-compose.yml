@@ -1,60 +1,158 @@
-version: '3.9'
-
 services:
+  setup:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION:-8.13.2}
+    container_name: siem-setup
+    user: "0"
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?Set ELASTIC_PASSWORD in .env}
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?Set KIBANA_SYSTEM_PASSWORD in .env}
+    command: >
+      bash -c '
+        until curl -s http://elasticsearch:9200 | grep -q "missing authentication credentials"; do
+          sleep 5;
+        done;
+        until curl -s -u "elastic:$${ELASTIC_PASSWORD}" \
+          -X POST http://elasticsearch:9200/_security/user/kibana_system/_password \
+          -H "Content-Type: application/json" \
+          -d "{\"password\":\"$${KIBANA_SYSTEM_PASSWORD}\"}" | grep -q "^{}"; do
+          sleep 5;
+        done;
+        echo "Elastic credentials configured.";
+      '
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - siem
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.2
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION:-8.13.2}
     container_name: elasticsearch
     environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
+      discovery.type: single-node
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?Set ELASTIC_PASSWORD in .env}
+      ES_JAVA_OPTS: ${ES_JAVA_OPTS:--Xms1g -Xmx1g}
+      xpack.security.enabled: "true"
+      xpack.security.http.ssl.enabled: "false"
+      xpack.security.transport.ssl.enabled: "false"
     ports:
-      - "9200:9200"
+      - "127.0.0.1:${ELASTICSEARCH_PORT:-9200}:9200"
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
+      - ./elastic/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    networks:
+      - siem
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200 | grep -q 'missing authentication credentials'"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.13.2
+    image: docker.elastic.co/kibana/kibana:${STACK_VERSION:-8.13.2}
     container_name: kibana
-    platform: linux/amd64
+    platform: ${DOCKER_PLATFORM:-linux/amd64}
     environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      ELASTICSEARCH_USERNAME: kibana_system
+      ELASTICSEARCH_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?Set KIBANA_SYSTEM_PASSWORD in .env}
+      SERVER_PUBLICBASEURL: ${KIBANA_PUBLIC_URL:-http://localhost:5601}
+      TELEMETRY_ENABLED: "false"
     ports:
-      - "5601:5601"
+      - "127.0.0.1:${KIBANA_PORT:-5601}:5601"
+    volumes:
+      - ./kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
     depends_on:
-      - elasticsearch
+      setup:
+        condition: service_completed_successfully
+    networks:
+      - siem
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -I http://localhost:5601/api/status | grep -q 'HTTP/'"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
 
   filebeat:
-    image: docker.elastic.co/beats/filebeat:7.10.2
+    image: docker.elastic.co/beats/filebeat:${STACK_VERSION:-8.13.2}
     container_name: filebeat
-    platform: linux/amd64
+    platform: ${DOCKER_PLATFORM:-linux/amd64}
     user: root
+    environment:
+      ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?Set ELASTIC_PASSWORD in .env}
     volumes:
       - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      - ./logs:/var/log:ro
+      - ./logs:/var/log/siem-sandbox:ro
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
+      kibana:
+        condition: service_healthy
     command: ["--strict.perms=false"]
+    networks:
+      - siem
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
 
   auditbeat:
-    image: docker.elastic.co/beats/auditbeat:7.10.2
+    image: docker.elastic.co/beats/auditbeat:${STACK_VERSION:-8.13.2}
     container_name: auditbeat
-    platform: linux/amd64
+    platform: ${DOCKER_PLATFORM:-linux/amd64}
     user: root
+    environment:
+      ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?Set ELASTIC_PASSWORD in .env}
     cap_add:
       - AUDIT_CONTROL
       - AUDIT_READ
     volumes:
       - ./auditbeat/auditbeat.yml:/usr/share/auditbeat/auditbeat.yml:ro
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
+      kibana:
+        condition: service_healthy
     command: ["--strict.perms=false"]
+    networks:
+      - siem
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
 
   fake-logger:
-    image: busybox
+    image: busybox:1.36
     container_name: fake-logger
     volumes:
       - ./logs:/logs
-    command: /bin/sh -c "while true; do echo '{\"@timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"event\":\"Simulated brute force\"}' >> /logs/test.log; sleep 10; done"
+    command: >
+      /bin/sh -c 'while true; do
+        echo "{\"@timestamp\":\"$$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"event.kind\":\"event\",\"event.category\":\"authentication\",\"event.action\":\"failed-login\",\"source.ip\":\"192.168.1.101\",\"message\":\"Simulated brute force attempt against SSH\"}" >> /logs/test.log;
+        sleep 10;
+      done'
+    networks:
+      - siem
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  siem:
+    driver: bridge
 
 volumes:
   elasticsearch-data:

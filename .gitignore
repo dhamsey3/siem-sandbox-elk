@@ -1,1 +1,7 @@
-.history
+.env
+.history/
+logs/*.log
+logs/*.exe
+logs/*.tmp
+*.swp
+.DS_Store
