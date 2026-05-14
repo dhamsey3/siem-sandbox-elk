@@ -161,11 +161,8 @@
   <path d="M 330 727 H 460" class="flow-amber"/>
   <text x="350" y="715" class="label">sample events</text>
 
-  <path d="M 940 746 H 1018 V 505 H 1080" class="flow-amber"/>
-  <text x="960" y="736" class="label">generated logs</text>
-
-  <path d="M 670 746 H 730" class="flow-amber"/>
-  <text x="684" y="735" class="label">append</text>
+  <path d="M 730 746 H 670" class="flow-amber"/>
+  <text x="684" y="735" class="label">generated events</text>
 
   <path d="M 565 700 V 540" class="flow-green"/>
   <text x="580" y="655" class="label">read-only mount</text>
