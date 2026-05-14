@@ -17,6 +17,8 @@ The stack runs Elasticsearch, Kibana, Filebeat, Auditbeat, and a small synthetic
 
 ## Architecture
 
+![SIEM Sandbox architecture](docs/architecture.svg)
+
 ```text
 Synthetic activity
       |
