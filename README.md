@@ -19,14 +19,7 @@ The stack runs Elasticsearch, Kibana, Filebeat, Auditbeat, and a small synthetic
 
 ![SIEM Sandbox architecture](docs/architecture.svg)
 
-```text
-Synthetic activity
-      |
-      v
-Project logs -> Filebeat ----\
-                              -> Elasticsearch -> Kibana
-Host telemetry -> Auditbeat --/
-```
+The rendered diagram above is available as [SVG](docs/architecture.svg), with an editable diagrams.net version in [docs/architecture.drawio](docs/architecture.drawio). It maps the local workstation boundary, Docker Compose network, authentication setup, Beats ingestion paths, synthetic event generation, and storage layer.
 
 ## Requirements
 
