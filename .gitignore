@@ -5,3 +5,4 @@ logs/*.exe
 logs/*.tmp
 *.swp
 .DS_Store
+.env.example
